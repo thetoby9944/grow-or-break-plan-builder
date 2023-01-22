@@ -1,0 +1,8 @@
+pillow~=9.2.0
+streamlit~=1.17.0
+numpy~=1.23.3
+pandas~=1.4.4
+
+streamlit_sortables
+streamlit_tags
+st_aggrid
