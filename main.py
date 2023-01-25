@@ -226,7 +226,8 @@ with session_repeats:
     n_blocks = int(st.number_input("Repeat times", 0, max_value=52, value=16))
 
     f"Congrats. Your program will have {int(n_blocks)} blocks. Blocks will look like this" \
-    f" (Drag and drop the exercises to sort)"
+    f" (Drag and drop the exercises to sort.)"
+
 
 with session_sorting:
     # if st.checkbox("Enable sorting"):
@@ -236,6 +237,8 @@ with session_sorting:
         with grid[i // 3][i % 3]:
             st.write(session)
             sessions_with_exercises[session] = sort_items(exercises, direction="vertical")
+
+    st.info("To remove an exercise, delete them directly from the sessions in Step ①.")
 
 set_styles = pd.read_csv("set_styles.csv", sep="\t")
 
@@ -283,9 +286,7 @@ with add_set_style_container.expander("Missing your favourite set style? Add it!
         # values into integer / float, if required
 
         if st.form_submit_button("Add"):
-            if raw_data["Name"] in ss.df_sets.Name.values:
-                st.warning("Set style already exists!")
-            elif not raw_data["Name"]:
+            if not raw_data["Name"]:
                 st.warning("Please name the set style!")
             elif is_set_style(raw_data["Reps"]) and is_weight_adjustment(raw_data["Warmup Weight Adjustment"]):
                 df = ss.df_sets
@@ -352,7 +353,7 @@ with conditional_set_style_container:
             "Block": list([f"Block {i + 1}" for i in range(n_blocks)])
         }
     )
-    session_exercise_df = pd.DataFrame(sessions_with_exercises).add_prefix("Exercise of ")
+    # session_exercise_df = pd.DataFrame(sessions_with_exercises).add_prefix("Exercise of ")
     all_exercises_by_day = pd.DataFrame({
         "Exercise by Day": [
             session + " " + exercise
@@ -600,7 +601,7 @@ with export_container.expander("Enter your 1RMs before generating your plan!").f
                     progression = 1
 
                 if current_set_style in ss.df_sets["Name"].tolist():
-                    set_style_row = ss.df_sets.loc[ss.df_sets["Name"] == current_set_style].iloc[0]
+                    set_style_row = ss.df_sets.loc[ss.df_sets["Name"] == current_set_style].iloc[-1]
                 else:
                     st.warning(f"{current_set_style} not in set styles")
 
@@ -612,6 +613,7 @@ with export_container.expander("Enter your 1RMs before generating your plan!").f
                 weights_percentage =  [
                     float(weight.replace("%", "e-2").replace(" ", ""))
                     for weight in set_style_row['Warmup Weight Adjustment'].split("/")
+                    if any(filter(str.isdigit, weight))
                 ] if set_style_row["Warmup Weight Adjustment"] is not np.nan else []
 
                 current_set = " ".join([
