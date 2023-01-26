@@ -13,9 +13,12 @@ from st_aggrid import AgGrid, ColumnsAutoSizeMode, AgGridTheme, GridOptionsBuild
 from utils import pad_dict_list, make_grid
 
 ss = st.session_state
+ss["enable_groups"] = False
+ss["set_format"] = "{reps}x{weight}"
 main_content_table_theme = AgGridTheme.ALPINE
 
-st.image("180.png")
+with st.columns(5)[0]:
+    st.image("gob_logo.png", use_column_width=False, width=150)
 
 "# **Grow or Break** Plan Builder"
 "# "
@@ -24,40 +27,69 @@ st.image("180.png")
 # "## Start with Sessions"
 
 
-"## ① Exercises that go together (Sessions)"
+"## ① Training Sessions"
+
+st.sidebar.header("Exercises")
+all_exercises_container = st.sidebar.expander("Exercises")
+add_ex_container = st.sidebar.container() # expander("Can't find your favourite exercise? Add it!" )
 
 name_sessions_container = st.container()
-groups_container = st.container()
+
+
+all_groups_container = st.sidebar.expander("My groups")
+groups_container = st.expander("Exercise groups")
+
 sessions_container = st.container()
-add_ex_container = st.container()
+
+
 "---"
+"## ② Number of training sessions"
+
+# all_sessions_container = st.sidebar.expander("My sessions")
 session_repeats = st.container()
 session_sorting = st.container()
 
-"## ② Whats your training style (Sets & Reps)"
+st.sidebar.header("Set Styles")
+all_set_styles_container = st.sidebar.expander("Set Styles")
+add_set_style_container = st.sidebar.container() # expander("Missing your favourite set style? Add it!")
 
-all_set_styles_container = st.container()
-add_set_style_container = st.container()
+#"## ④⑤ Progressive overload! (Waves & Periodization)"
 
+st.sidebar.header("Progression Waves")
+all_set_progressions = st.sidebar.expander("Progression Waves")
+add_progression_container = st.sidebar.container() # expander("Want a custom progression wave, i.e. weight adjustments per block? Add it!")
 
-"## ③ Progressive overload! (Waves & Periodization)"
+"---"
 
-all_set_progressions = st.container()
-add_progression_container = st.container()
+"## ③ Lets set the program rules!"
 
-
-"## ④ Lets build the program! (Blocks and Exercise Types)"
-
-default_set_style_container = st.container()
+# default_set_style_container = st.container()
 conditional_set_style_container = st.container()
-add_rules_container = st.container()
+add_rules_container = st.expander("Add Rules", expanded=True)
+
+"---"
+
+"## ④ Export"
+
+one_rm_container = st.expander("Enter your 1RMs before generating your plan!")
+export_plan_container = st.container()
+
+
+
+st.sidebar.header("Settings")
+settings_container = st.sidebar.container()
+
+
+with settings_container:
+    # ss.enable_groups = st.checkbox("Enable exercise grouping")
+    ss.set_format = st.text_input(
+        "Set format", ss.set_format,
+        help="**Examples**  \n\n"
+             "- `{reps}x{weight}kg @{percentage:.1%}`  \n\n"
+             "- `{reps}/{weight}lbs`")
 
 
 exercises = pd.read_csv("exercises.csv", sep="\t")
-
-"## ⑤ Export"
-
-export_container = st.container()
 
 if "df" not in ss:
     ss["df"] = exercises
@@ -67,9 +99,9 @@ if "df" not in ss:
 n_col = ss.df.shape[1]  # col count
 rw = -1
 
-with add_ex_container.expander("Can't find your favourite exercise? Add it!" ):
+with add_ex_container:
     with st.form(key="add form", clear_on_submit=True):
-        cols = st.columns(n_col - 1)
+        cols = [st.container(), st.container(), st.container()]#st.columns(3)
         df = ss.df
 
         raw_data = {
@@ -82,64 +114,67 @@ with add_ex_container.expander("Can't find your favourite exercise? Add it!" ):
         # values into integer / float, if required
 
         if st.form_submit_button("Add"):
-            if raw_data["Exercise"] in ss.df.Exercise:
-                st.warning("Exercise name already exists.")
+
             if raw_data["Exercise"] == "":
                 st.warning("Please specify a name")
             else:
                 df = ss.df
-                raw_data["Muscle Group"] = df[df["Muscle"] == raw_data["Muscle"]].at[0, "Muscle Group"]
+                raw_data["Muscle Group"] = df[df["Muscle"] == raw_data["Muscle"]].iloc[-1]["Muscle Group"]
                 rw = ss.df.shape[0] + 1
                 ss.df.loc[rw] = raw_data
-                st.info("Added exercise")
+                st.info(f"Added exercise {raw_data['Exercise']}")
 
-with st.sidebar.expander("All Exercises"):
+with all_exercises_container:
     df = ss.df
     AgGrid(df.reindex(columns=np.roll(df.columns, 1)), height=250, theme="material")
 
-with groups_container.expander("Exercise groups"):
-    st.info(
-        "**Exercise Groups** \n\n You can add your own exercise groups here. "
-        "Now you can add your group to your sessions"
-    )
+with groups_container:
+    if ss.enable_groups:
+        st.info(
+            "**Exercise Groups** \n\n You can add your own exercise groups here. "
+            "Now you can add your group to your sessions"
+        )
 
-    defaults = {
-        "Cardio": [
-            "Incline Walk",
-            "Stairmaster"
-        ]
-    }
+        defaults = {
+            "Cardio": [
+                "Incline Walk",
+                "Stairmaster"
+            ]
+        }
 
-    placeholder = st.container()
+        placeholder = st.container()
 
-    group_names = list(defaults.keys())
+        group_names = list(defaults.keys())
 
-    "---"
-    group_names = st_tags(
-        label="Add more Exercise Groups. Careful, this will reset your sessions.",
-        value=group_names,
-        suggestions=["Arms", "Core", "Accessories"],
-        text="Enter new group name here and press ⏎"
-    )
+        "---"
+        group_names = st_tags(
+            label="Add more Exercise Groups. Careful, this will reset your sessions.",
+            value=group_names,
+            suggestions=["Arms", "Core", "Accessories"],
+            text="Enter new group name here and press ⏎"
+        )
 
-    if not len(group_names):
-        st.warning("Create at least one exercise group please")
-        st.stop()
+        if not len(group_names):
+            st.warning("Create at least one exercise group please")
+            st.stop()
 
-    groups = {
-        group:
-            placeholder.multiselect(
-                group,
-                options=ss.df.Exercise,
-                default=defaults[group] if group in defaults else None,
-                format_func=lambda x: x,
-                help="Start writing in the group to search for exercises."
-            )
-        for group in group_names
-    }
+        groups = {
+            group:
+                placeholder.multiselect(
+                    group,
+                    options=ss.df.Exercise,
+                    default=defaults[group] if group in defaults else None,
+                    format_func=lambda x: x,
+                    help="Start writing in the group to search for exercises."
+                )
+            for group in group_names
+        }
+    else:
+        groups = {}
 
-with st.sidebar.expander("My groups"):
-    AgGrid(pd.DataFrame(pad_dict_list(groups, "")), theme="material")
+with all_groups_container:
+    if ss.enable_groups:
+        AgGrid(pd.DataFrame(pad_dict_list(groups, "")), theme="material")
 
 with name_sessions_container:
     default_sessions = {
@@ -171,7 +206,7 @@ with name_sessions_container:
     sessions = list(default_sessions.keys())
 
     sessions = st_tags(
-        label="Name your training sessions",
+        label="",
         value=sessions,
         suggestions="""
         WEEK A - Day 1  
@@ -217,16 +252,16 @@ with sessions_container:
 
     }
 
-with st.sidebar.expander("My sessions"):
-    table = pd.DataFrame(pad_dict_list(sessions_with_exercises, ""))
-    table.index += 1
-    AgGrid(table, theme="material")
+#with all_sessions_container:
+#    table = pd.DataFrame(pad_dict_list(sessions_with_exercises, ""))
+#    table.index += 1
+#    AgGrid(table, theme="material")
 
 with session_repeats:
     n_blocks = int(st.number_input("Repeat times", 0, max_value=52, value=16))
 
     f"Congrats. Your program will have {int(n_blocks)} blocks. Blocks will look like this" \
-    f" (Drag and drop the exercises to sort.)"
+    f" Drag and drop the exercises to sort."
 
 
 with session_sorting:
@@ -272,9 +307,9 @@ def is_weight_adjustment(input_text):
     return res
 
 
-with add_set_style_container.expander("Missing your favourite set style? Add it!"):
+with add_set_style_container:
     with st.form(key="add progression_form", clear_on_submit=False):
-        cols = st.columns(n_col)
+        cols = [st.container()]*n_col #st.columns(n_col)
 
         raw_data = {
             "Name": cols[0].text_input("Name", placeholder="Set Style Name"),
@@ -304,14 +339,14 @@ with all_set_progressions:
     df = ss.df_progressions
     AgGrid(df, height=250, columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS, theme=main_content_table_theme)
 
-with add_progression_container.expander("Want a custom progression wave, i.e. weight adjustments per block? Add it!"):
+with add_progression_container:
     with st.form(key="add set_form", clear_on_submit=False):
-        cols = st.columns(2)
+        cols = [st.container()]*2 #st.columns(2)
 
         raw_data = {
             "Name": cols[0].text_input("Progression Name", placeholder="E.g. accessory progression"),
             "Progression": cols[1].text_input(
-                "Progression (weight adjustment for each block)",
+                "Progression - weight adjustment for each block",
                 value="60% / 62% / 65% / 62% / 67% / 70% / 67% / 70% / 72% / 70% / 72% / 75% / 72% / 75% / 77% / 75%",
                 placeholder="70% / 80% / 90% / 100%"
             ),
@@ -330,19 +365,24 @@ with add_progression_container.expander("Want a custom progression wave, i.e. we
                 st.info("Added progression")
 
 with all_set_styles_container:
-    st.subheader("Set Styles")
     df = ss.df_sets
-    AgGrid(df, height=250, theme=main_content_table_theme, fit_columns_on_grid_load=True)
+    AgGrid(df, height=250, theme=main_content_table_theme, columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS)
 
 # "## What's your routine bro?"
 # with default_set_style_container:
 #    default_set_style = st.selectbox("Default set style", options=ss.df_sets.Name, index=6)
 
 with conditional_set_style_container:
-    st.write("Here's an example how you would configure the Juggernaut program. "
-             "See https://liftvault.com/programs/strength/juggernaut-method-base-template-spreadsheet/"
-             " for source and details.")
-    st.image(PIL.Image.open("./juggernaut_programm.jpeg"))
+
+    with st.expander("Info"):
+        st.info("The prefilled values show how you would configure the Juggernaut program. "
+                 "See https://liftvault.com/programs/strength/juggernaut-method-base-template-spreadsheet/"
+                 " for source and details.")
+        st.image(PIL.Image.open("./juggernaut_programm.jpeg"), use_column_width=True)
+
+    if st.button(":exclamation: Delete all Rules"):
+        ss.rule_df = pd.DataFrame()
+
     sessions_df = pd.DataFrame(
         {
             "Session": sessions,
@@ -414,13 +454,12 @@ Deload"""
         ss["rule_df"] = pd.read_csv("./rules.csv")#pd.concat([rule_df_temp_1, rule_df_temp_2], axis=1).dropna(axis=1, how="all").fillna("Any")
 
 
+
     AgGrid(ss.rule_df, height=250, columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS, theme=main_content_table_theme)
 
-    if st.button("Reset"):
-        ss.rule_df = pd.DataFrame()
 
 
-with add_rules_container.expander("Add Rules", expanded=True):
+with add_rules_container:
     if "n_rules" not in ss:
         ss["n_rules"] = 1
 
@@ -534,7 +573,7 @@ with add_rules_container.expander("Add Rules", expanded=True):
             st.info("Added rules")
 
 
-with export_container.expander("Enter your 1RMs before generating your plan!").form("Enter your 1RMs"):
+with one_rm_container.form("Enter your 1RMs"):
     st.write("View this 1RM calculator if you don't know your 1RMs exactly.")
     st.image(PIL.Image.open("./1RM_calculator.png"))
     one_rms = {}
@@ -546,9 +585,9 @@ with export_container.expander("Enter your 1RMs before generating your plan!").f
 
             for exercise in exercises:
                 if exercise not in one_rms:
-                    one_rms[exercise] = st.number_input(f"1RM for {exercise}", 100)
+                    one_rms[exercise] = st.number_input(f"1RM for {exercise}", value=100)
 
-                exercise_row = ss.df.loc[ss.df["Exercise"] == exercise].iloc[0]
+                exercise_row = ss.df.loc[ss.df["Exercise"] == exercise].iloc[-1]
 
                 match = {
                     "If Block is": block,
@@ -617,8 +656,11 @@ with export_container.expander("Enter your 1RMs before generating your plan!").f
                 ] if set_style_row["Warmup Weight Adjustment"] is not np.nan else []
 
                 current_set = " ".join([
-                    f"{int(rep_count)}"
-                    f"x{round(one_rms[exercise]*(progression+weight_percentage))}"
+                    ss.set_format.format(
+                        reps=int(rep_count),
+                        weight=round(one_rms[exercise]*(progression+weight_percentage)),
+                        percentage=(progression+weight_percentage)
+                    )
                     #f"({(progression+weight_percentage)*100}% of {one_rms[exercise]})"
                     for i, (rep_count, weight_percentage)
                     in enumerate(list(itertools.zip_longest(reps, weights_percentage, fillvalue=0)))
@@ -632,8 +674,8 @@ with export_container.expander("Enter your 1RMs before generating your plan!").f
     if st.form_submit_button("Submit 1RMs"):
         pass
 
-with export_container:
-    if st.button("Generate Plan"):
+with export_plan_container:
+    if True or st.button("Generate Plan"):
         result_plan = pd.DataFrame.from_dict({
 
                 (i,j): plan_structure[i][j]
@@ -660,10 +702,11 @@ with export_container:
                 #'white-space': 'pre',
                 'overflow-wrap': "anywhere",
                 "overflow": "visible",
-        "text-overflow": "unset",
-        "white-space": "normal",
+                "text-overflow": "unset",
+                "white-space": "normal",
             },
         )
-        AgGrid(result_plan, gridOptions=gb.build(), height=400, theme=main_content_table_theme)# columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS)
 
-        st.info("Right click the plan to export!")
+    AgGrid(result_plan, gridOptions=gb.build(), height=400,
+           theme=main_content_table_theme)  # columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS)
+    st.info("Right click the plan to export!")
