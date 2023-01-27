@@ -1,3 +1,9 @@
+from time import sleep
+
+from streamlit_sortables import sort_items
+from streamlit_tags import st_tags
+from st_aggrid import AgGrid, ColumnsAutoSizeMode, AgGridTheme, GridOptionsBuilder
+
 import datetime
 import io
 import itertools
@@ -7,10 +13,15 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import re
+import os
+from time import sleep
 
-from streamlit_sortables import sort_items
-from streamlit_tags import st_tags
-from st_aggrid import AgGrid, ColumnsAutoSizeMode, AgGridTheme, GridOptionsBuilder
+
+@st.cache
+def load_app():
+    with st.spinner("Loading"):
+        sleep(3)
+
 
 # Constants
 
