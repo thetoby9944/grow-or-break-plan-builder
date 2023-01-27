@@ -5,3 +5,5 @@ pandas~=1.4.4
 streamlit-sortables
 streamlit-tags
 streamlit-aggrid
+xlsxwriter
+openpyxl

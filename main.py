@@ -1,3 +1,5 @@
+import datetime
+import io
 import itertools
 
 import PIL.Image
@@ -10,28 +12,33 @@ from streamlit_sortables import sort_items
 from streamlit_tags import st_tags
 from st_aggrid import AgGrid, ColumnsAutoSizeMode, AgGridTheme, GridOptionsBuilder
 
-from utils import pad_dict_list, make_grid
+# Constants
 
 ss = st.session_state
-ss["enable_groups"] = False
-ss["set_format"] = "{reps}x{weight}"
-main_content_table_theme = AgGridTheme.ALPINE
+main_content_table_theme = AgGridTheme.ALPINE.value
+
+
+# UI Order
 
 with st.columns(5)[0]:
-    st.image("gob_logo.png", use_column_width=False, width=150)
+    st.image("assets/gob_logo.png", use_column_width=False, width=150)
 
 "# **Grow or Break** Plan Builder"
 "# "
 "# "
 
 # "## Start with Sessions"
+load_col, save_col = st.sidebar.columns(2)
+st.sidebar.write("---")
+load_container = load_col.container()
+save_container = save_col.container()
 
 
 "## ① Training Sessions"
 
 st.sidebar.header("Exercises")
 all_exercises_container = st.sidebar.expander("Exercises")
-add_ex_container = st.sidebar.container() # expander("Can't find your favourite exercise? Add it!" )
+add_ex_container = st.sidebar.container()  # expander("Can't find your favourite exercise? Add it!" )
 
 name_sessions_container = st.container()
 
@@ -41,23 +48,22 @@ groups_container = st.expander("Exercise groups")
 
 sessions_container = st.container()
 
-
 "---"
 "## ② Number of training sessions"
 
-# all_sessions_container = st.sidebar.expander("My sessions")
+all_sessions_container = st.sidebar.expander("Sessions")
 session_repeats = st.container()
 session_sorting = st.container()
 
 st.sidebar.header("Set Styles")
 all_set_styles_container = st.sidebar.expander("Set Styles")
-add_set_style_container = st.sidebar.container() # expander("Missing your favourite set style? Add it!")
+add_set_style_container = st.sidebar.container()  # expander("Missing your favourite set style? Add it!")
 
-#"## ④⑤ Progressive overload! (Waves & Periodization)"
+# "## ④⑤ Progressive overload! (Waves & Periodization)"
 
 st.sidebar.header("Progression Waves")
 all_set_progressions = st.sidebar.expander("Progression Waves")
-add_progression_container = st.sidebar.container() # expander("Want a custom progression wave, i.e. weight adjustments per block? Add it!")
+add_progression_container = st.sidebar.container()  # expander("Want a custom progression wave? Add it!")
 
 "---"
 
@@ -74,34 +80,124 @@ add_rules_container = st.expander("Add Rules", expanded=True)
 one_rm_container = st.expander("Enter your 1RMs before generating your plan!")
 export_plan_container = st.container()
 
-
-
 st.sidebar.header("Settings")
 settings_container = st.sidebar.container()
 
+# Defaults
 
-with settings_container:
-    # ss.enable_groups = st.checkbox("Enable exercise grouping")
-    ss.set_format = st.text_input(
-        "Set format", ss.set_format,
-        help="**Examples**  \n\n"
-             "- `{reps}x{weight}kg @{percentage:.1%}`  \n\n"
-             "- `{reps}/{weight}lbs`")
+with load_container:
+    st.subheader("Load")
+    default_plan_name = st.selectbox(
+        "Select a plan",
+        ["Juggernaut", "Custom Plan"],
+        on_change=lambda: ss.clear()
+    )
+    if default_plan_name == "Custom Plan":
+        upload = st.file_uploader("Upload a savefile", type="gob", on_change=lambda: ss.clear())
+        if upload is not None:
+            file_ref = upload
+        else:
+            st.info("Upload a previously saved .gob plan to continue.")
+            st.stop()
+    else:
+        file_ref = default_plan_name + " Template.xlsx"
 
 
-exercises = pd.read_csv("exercises.csv", sep="\t")
+if "id" not in ss:
+    ss["id"] = datetime.datetime.now().isoformat()
+
+if "enable_groups" not in ss:
+    ss["enable_groups"] = False
+
+if "set_format" not in ss:
+    ss["set_format"] = "{reps}x{weight}"
 
 if "df" not in ss:
-    ss["df"] = exercises
+    ss["df"] = pd.read_excel(file_ref, "Exercises")
+
+if "df_sets" not in ss:
+    ss["df_sets"] = pd.read_excel(file_ref, "Set Styles")
+
+if "df_progressions" not in ss:
+    ss["df_progressions"] = pd.read_excel(file_ref, "Progressions")
+
+if "rule_df" not in ss:
+    ss["rule_df"] = pd.read_excel(file_ref, "Rules")
+
+if "df_sessions" not in ss:
+    ss["df_sessions"] = pd.read_excel(file_ref, "Sessions")
+    ss["default_sessions"] = {
+        session: exercises.dropna().to_list()
+        for session, exercises
+        in ss.df_sessions.to_dict("series").items()
+    }
+
+if "df_blocks" not in ss:
+    ss["df_blocks"] = pd.read_excel(file_ref, "Blocks")
+    ss["default_blocks"] = ss.df_blocks["Number of Blocks"].loc[0]
+
+if "sort_key" not in ss:
+    ss["sort_key"] = datetime.datetime.now().isoformat()
+
+
+# Utils
+
+def pad_dict_list(dict_list_orig: dict, padel):
+    dict_list = {key: [i for i in value]for key, value in dict_list_orig.items()}
+    lmax = 0
+    for lname in dict_list.keys():
+        lmax = max(lmax, len(dict_list[lname]))
+    for lname in dict_list.keys():
+        ll = len(dict_list[lname])
+        if  ll < lmax:
+            dict_list[lname] += [padel] * (lmax - ll)
+    return dict_list
+
+
+def make_grid(rows, cols):
+    return {
+        row :
+        st.columns(cols)
+        for row in range(rows)
+    }
+
+
+def flatten(item, sequences=(tuple, list, set)):
+    yield from map(flatten, item) if isinstance(item, sequences) else [item]
+
+
+def is_set_style(input_text):
+    pattern = re.compile(r"^[+-]?\d+\s*(/\s*[+-]?\d+\s*)*$", re.IGNORECASE)
+    res = pattern.match(input_text)
+    if not res:
+        st.warning("Set Style should look like this \n\n    12 / 18 / 10 \n\n or \n\n    5 / 5 / 5 / 5 \n\n"
+                   "Type negative values to specify number of reps left in the tank . \n\n Type zero to specify an "
+                   "AMRAP (as many reps as possible) set.")
+    return res
+
+
+def is_weight_adjustment(input_text):
+    pattern = re.compile(
+        r"^("
+        r"([+-]?(?=\.\d|\d)(?:\d+)?(?:\.?\d*))(?:[eE]([+-]?\d+))?%\s*"
+        r"(/\s*([+-]?(?=\.\d|\d)(?:\d+)?(?:\.?\d*))(?:[eE]([+-]?\d+))?%\s*)*"
+        r")?$",
+        re.IGNORECASE)
+    res = pattern.match(input_text)
+    if not res:
+        st.warning("Weight adjustment should look like this: `-12.5% / -5%` or `-12.5% / -5% / 0% / -5%`")
+    return res
 
 
 
-n_col = ss.df.shape[1]  # col count
-rw = -1
+# Program Start
 
 with add_ex_container:
+    n_col = ss.df.shape[1]  # col count
+    rw = -1
+
     with st.form(key="add form", clear_on_submit=True):
-        cols = [st.container(), st.container(), st.container()]#st.columns(3)
+        cols = [st.container(), st.container(), st.container()]  # st.columns(3)
         df = ss.df
 
         raw_data = {
@@ -109,9 +205,6 @@ with add_ex_container:
             "Muscle": cols[1].selectbox("Muscle", df["Muscle"].unique()),
             "Exercise Type": cols[2].selectbox("Exercise Type", df["Exercise Type"].unique())
         }
-
-        # you can insert code for a list comprehension here to change the data
-        # values into integer / float, if required
 
         if st.form_submit_button("Add"):
 
@@ -177,33 +270,7 @@ with all_groups_container:
         AgGrid(pd.DataFrame(pad_dict_list(groups, "")), theme="material")
 
 with name_sessions_container:
-    default_sessions = {
-        "Day 1": [
-            "Bench Press Barbell",
-            "Hack Squats",
-            "Overhead Shoulder Press Barbell",
-            "Pull-Ups",
-            "Cardio"
-        ],
-        "Day 2": [
-            "Conventional Deadlifts",
-            "Bench Press Dumbbell",
-            "Pull-Ups",
-            "Barbell Row Standing",
-            "Cardio"
-
-        ],
-        "Day 3": [
-            "Hack Squats",
-            "Conventional Deadlifts",
-            "Barbell Row Standing",
-            "Overhead Shoulder Press Barbell",
-            "Cardio"
-        ],
-
-    }
-
-    sessions = list(default_sessions.keys())
+    sessions = list(ss.default_sessions.keys())
 
     sessions = st_tags(
         label="",
@@ -216,7 +283,7 @@ with name_sessions_container:
     WEEK B - Day 2  
     WEEK B - Day 3  """.split("\n"),
         text="Enter new session name here and press ⏎",
-        key="sttags"
+        key="sttags"+ss.id
         # help=sessions_help
     )
 
@@ -227,16 +294,22 @@ with name_sessions_container:
     sessions_list = sessions
 
 with sessions_container:
+    def update_sort_key():
+        ss.sort_key = datetime.datetime.now().isoformat()
+
     group_names = [group for group in groups.keys()]
     options = group_names + list(ss.df.Exercise.tolist())
     sessions_with_elements = {
         session: st.multiselect(
             session,
             options=options,
-            default=
-            (value for value in default_sessions[session] if value in options)
-            if session in default_sessions
-            else []
+            default=(
+                (value for value in ss.default_sessions[session] if value in options)
+                if session in ss.default_sessions
+                else []
+            ),
+            key=session+ss.id,
+            on_change=update_sort_key()
         )
         for i, session in enumerate(sessions_list)
 
@@ -249,67 +322,42 @@ with sessions_container:
             for exercise in (groups[session_element] if session_element in groups else [session_element])
         ]
         for session, session_elements in sessions_with_elements.items()
-
     }
 
-#with all_sessions_container:
-#    table = pd.DataFrame(pad_dict_list(sessions_with_exercises, ""))
-#    table.index += 1
-#    AgGrid(table, theme="material")
+    for session, exercises in sessions_with_exercises.items():
+        if len(exercises) < 1:
+            st.info("You have empty session, remove the empty session or add some exercises to continue")
+            st.stop()
+
+with all_sessions_container:
+     table = pd.DataFrame(pad_dict_list(sessions_with_exercises, ""))
+     table.index += 1
+     AgGrid(table, theme="material")
 
 with session_repeats:
-    n_blocks = int(st.number_input("Repeat times", 0, max_value=52, value=16))
+    n_blocks = int(st.number_input("Repeat times", 0, max_value=52,
+                                   value=ss.default_blocks, key="blocks"+ss.id))
 
-    f"Congrats. Your program will have {int(n_blocks)} blocks. Blocks will look like this" \
-    f" Drag and drop the exercises to sort."
-
+    f"Congrats. Your program will have {int(n_blocks)} **blocks**. Blocks will look look like this:"
 
 with session_sorting:
     # if st.checkbox("Enable sorting"):
-    session = sessions * 2
     grid = make_grid(len(sessions) // 3 + 1, 3)
     for i, (session, exercises) in enumerate(sessions_with_exercises.items()):
         with grid[i // 3][i % 3]:
             st.write(session)
-            sessions_with_exercises[session] = sort_items(exercises, direction="vertical")
-
-    st.info("To remove an exercise, delete them directly from the sessions in Step ①.")
-
-set_styles = pd.read_csv("set_styles.csv", sep="\t")
-
-if "df_sets" not in ss:
-    ss["df_sets"] = set_styles
-
-n_col = ss.df_sets.shape[1]  # col count
-rw = -1
+            sessions_with_exercises[session] = sort_items(exercises, direction="vertical")# , key=session+ss.sort_key)
+    st.info("These elements allow drag and drop to **sort** exercises. For **add / remove**, use the elements in step ①")
 
 
-def is_set_style(input_text):
-    pattern = re.compile(r"^[+-]?\d+\s*(/\s*[+-]?\d+\s*)*$", re.IGNORECASE)
-    res = pattern.match(input_text)
-    if not res:
-        st.warning("Set Style should look like this \n\n    12 / 18 / 10 \n\n or \n\n    5 / 5 / 5 / 5 \n\n"
-                   "Type negative values to specify number of reps left in the tank . \n\n Type zero to specify an "
-                   "AMRAP (as many reps as possible) set.")
-    return res
-
-
-def is_weight_adjustment(input_text):
-    pattern = re.compile(
-        r"^("
-        r"([+-]?(?=\.\d|\d)(?:\d+)?(?:\.?\d*))(?:[eE]([+-]?\d+))?%\s*"
-        r"(/\s*([+-]?(?=\.\d|\d)(?:\d+)?(?:\.?\d*))(?:[eE]([+-]?\d+))?%\s*)*"
-        r")?$",
-        re.IGNORECASE)
-    res = pattern.match(input_text)
-    if not res:
-        st.warning("Weight adjustment should look like this: `-12.5% / -5%` or `-12.5% / -5% / 0% / -5%`")
-    return res
 
 
 with add_set_style_container:
+    n_col = ss.df_sets.shape[1]  # col count
+    rw = -1
+
     with st.form(key="add progression_form", clear_on_submit=False):
-        cols = [st.container()]*n_col #st.columns(n_col)
+        cols = [st.container()] * n_col  # st.columns(n_col)
 
         raw_data = {
             "Name": cols[0].text_input("Name", placeholder="Set Style Name"),
@@ -329,11 +377,6 @@ with add_set_style_container:
                 ss.df_sets.loc[rw] = raw_data
                 st.info("Added set style")
 
-
-if "df_progressions" not in ss:
-    ss["df_progressions"] = pd.read_csv("progressions.csv")
-
-
 with all_set_progressions:
     st.subheader("Set Progressions")
     df = ss.df_progressions
@@ -341,7 +384,7 @@ with all_set_progressions:
 
 with add_progression_container:
     with st.form(key="add set_form", clear_on_submit=False):
-        cols = [st.container()]*2 #st.columns(2)
+        cols = [st.container()] * 2  # st.columns(2)
 
         raw_data = {
             "Name": cols[0].text_input("Progression Name", placeholder="E.g. accessory progression"),
@@ -373,12 +416,11 @@ with all_set_styles_container:
 #    default_set_style = st.selectbox("Default set style", options=ss.df_sets.Name, index=6)
 
 with conditional_set_style_container:
-
     with st.expander("Info"):
         st.info("The prefilled values show how you would configure the Juggernaut program. "
-                 "See https://liftvault.com/programs/strength/juggernaut-method-base-template-spreadsheet/"
-                 " for source and details.")
-        st.image(PIL.Image.open("./juggernaut_programm.jpeg"), use_column_width=True)
+                "See https://liftvault.com/programs/strength/juggernaut-method-base-template-spreadsheet/"
+                " for source and details.")
+        st.image(PIL.Image.open("assets/juggernaut_programm.jpeg"), use_column_width=True)
 
     if st.button(":exclamation: Delete all Rules"):
         ss.rule_df = pd.DataFrame()
@@ -420,23 +462,6 @@ with conditional_set_style_container:
 
     df_2 = df.add_suffix(" is").add_prefix("If ")
 
-    juggernaut = """10's Accumulation
-10's Intensification
-10's Realization
-Deload
-8's Accumulation
-8's Intensification
-8's Realization
-Deload
-5's Accumulation
-5's Intensification
-5's Realization
-Deload
-3's Accumulation
-3's Intensification
-3's Realization
-Deload"""
-
     rule_df_temp_01 = pd.DataFrame(columns=df_2.columns).drop("If Block is", axis=1)
 
     rule_df_temp_02 = pd.DataFrame({
@@ -444,20 +469,6 @@ Deload"""
     })
 
     rule_df_temp_1 = pd.concat([rule_df_temp_02, rule_df_temp_01], axis=1)
-
-    rule_df_temp_2 = pd.DataFrame({
-        # "Rule Number" : list(range(n_blocks)),
-        "Set Style": juggernaut.split("\n"),
-    })
-
-    if "rule_df" not in ss:
-        ss["rule_df"] = pd.read_csv("./rules.csv")#pd.concat([rule_df_temp_1, rule_df_temp_2], axis=1).dropna(axis=1, how="all").fillna("Any")
-
-
-
-    AgGrid(ss.rule_df, height=250, columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS, theme=main_content_table_theme)
-
-
 
 with add_rules_container:
     if "n_rules" not in ss:
@@ -491,14 +502,11 @@ with add_rules_container:
         st.write("---")
         st.write("Rules")
 
-
-    # op1 = "for all matches"
-    # op2 = "for each match separately"
-
     select_style_radio = True  # op1
     if len(conditions) > 1:
-        select_style_radio = st.checkbox("Same rules for all conditions",
-                                         True)  # st.radio("Select set style", [op1, op2])
+        select_style_radio = st.checkbox(
+            "Same rules for all conditions", True
+        )  # st.radio("Select set style", [op1, op2])
 
     if len(rule_columns) < 1 or len(conditions) < 1:
         set_styles_by_condition = {}
@@ -514,8 +522,6 @@ with add_rules_container:
             "Block Progression",
             ss.df_progressions.Name
         )
-
-        #all_match_ignore = st.checkbox("Ignore Weights", False)
 
         set_styles_by_condition = [
             {
@@ -544,7 +550,7 @@ with add_rules_container:
                 },
                 **{
                     "Set Style": st.selectbox(
-                        " ".join(np.asarray(condition).flatten())+ "Set Style",
+                        " ".join(np.asarray(condition).flatten()) + "Set Style",
                         ss.df_sets.Name
                     )
                 },
@@ -568,14 +574,20 @@ with add_rules_container:
             ss.rule_df = ss.rule_df[
                 [col for col in ss.rule_df.columns if col.startswith("If")] +
                 [col for col in ss.rule_df.columns if not col.startswith("If")]
-            ]
+                ]
             ss.rule_df = ss.rule_df.replace("Ignore", None)
             st.info("Added rules")
+
+with conditional_set_style_container:
+    AgGrid(
+        ss.rule_df, height=250,
+        columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS, theme=main_content_table_theme
+    )
 
 
 with one_rm_container.form("Enter your 1RMs"):
     st.write("View this 1RM calculator if you don't know your 1RMs exactly.")
-    st.image(PIL.Image.open("./1RM_calculator.png"))
+    st.image(PIL.Image.open("assets/1RM_calculator.png"))
     one_rms = {}
 
     plan_structure = {}
@@ -610,7 +622,8 @@ with one_rm_container.form("Enter your 1RMs"):
 
                 if "Block Progression" in ss.rule_df:
                     current_progression_rules = [
-                        row for index, row in ss.rule_df[ss.rule_df['Block Progression'].notna()].to_dict("index").items()
+                        row for index, row in
+                        ss.rule_df[ss.rule_df['Block Progression'].notna()].to_dict("index").items()
                         if all(
                             col not in row or row[col] == val or row[col] is np.nan
                             for col, val in match.items()
@@ -649,7 +662,7 @@ with one_rm_container.form("Enter your 1RMs"):
                     for rep in set_style_row['Reps'].split("/")
                 ] if set_style_row['Reps'] is not np.nan else []
 
-                weights_percentage =  [
+                weights_percentage = [
                     float(weight.replace("%", "e-2").replace(" ", ""))
                     for weight in set_style_row['Warmup Weight Adjustment'].split("/")
                     if any(filter(str.isdigit, weight))
@@ -658,10 +671,9 @@ with one_rm_container.form("Enter your 1RMs"):
                 current_set = " ".join([
                     ss.set_format.format(
                         reps=int(rep_count),
-                        weight=round(one_rms[exercise]*(progression+weight_percentage)),
-                        percentage=(progression+weight_percentage)
+                        weight=round(one_rms[exercise] * (progression + weight_percentage)),
+                        percentage=(progression + weight_percentage)
                     )
-                    #f"({(progression+weight_percentage)*100}% of {one_rms[exercise]})"
                     for i, (rep_count, weight_percentage)
                     in enumerate(list(itertools.zip_longest(reps, weights_percentage, fillvalue=0)))
                 ])
@@ -669,44 +681,82 @@ with one_rm_container.form("Enter your 1RMs"):
                 if len(reps) > 0 and exercise not in one_rms and current_set_style != "Empty":
                     one_rms[exercise] = st.number_input(f"1RM for {exercise}", 100)
 
-                plan_structure[block][session + " "+ exercise] = current_set
+                plan_structure[block][session + " " + exercise] = current_set
 
-    if st.form_submit_button("Submit 1RMs"):
+    if st.form_submit_button("Update Plan"):
         pass
 
 with export_plan_container:
-    if True or st.button("Generate Plan"):
-        result_plan = pd.DataFrame.from_dict({
+    # if True or st.button("Generate Plan"):
+    # result_plan = pd.DataFrame.from_dict({
+    #       (i,j): plan_structure[i][j]
+    #       for i in plan_structure.keys()
+    #       for j in plan_structure[i].keys()
+    #       for k in plan_structure[i][j].keys()
+    #    },
+    #    orient="index"
+    #  )#.reset_index(level=[0,1]).pivot(index="level_1", columns=["level_0"], values=["Reps", "Weight Percentage"])
+    result_plan = pd.DataFrame.from_dict(plan_structure)
+    # result_plan =pd.json_normalize(plan_structure, meta=['Blocks','Sessions', "Sets"])#, record_path='Sets')
+    result_plan["Exercise"] = result_plan.index
+    result_plan = result_plan.reindex(columns=np.roll(result_plan.columns, 1))
 
-                (i,j): plan_structure[i][j]
-                for i in plan_structure.keys()
-                for j in plan_structure[i].keys()
-                #for k in plan_structure[i][j].keys()
+    gb = GridOptionsBuilder.from_dataframe(result_plan)
+    gb.configure_default_column(
+        resizable=True,
+        autoHeight=True,
+        # wrapText=True,
+        width=150,
+        cellStyle={
+            # 'white-space': 'pre',
+            'overflow-wrap': "anywhere",
+            "overflow": "visible",
+            "text-overflow": "unset",
+            "white-space": "normal",
+        },
+    )
 
-            },
-            orient="index"
-        )#.reset_index(level=[0,1]).pivot(index="level_1", columns=["level_0"], values=["Reps", "Weight Percentage"])
-        result_plan = pd.DataFrame.from_dict(plan_structure)
-        #result_plan =pd.json_normalize(plan_structure, meta=['Blocks','Sessions', "Sets"])#, record_path='Sets')
-        result_plan["Exercise"] = result_plan.index
-        result_plan = result_plan.reindex(columns=np.roll(result_plan.columns, 1))
-
-        gb = GridOptionsBuilder.from_dataframe(result_plan)
-        gb.configure_default_column(
-            resizable= True,
-            autoHeight=True,
-
-            #wrapText=True,
-            width=150,
-            cellStyle={
-                #'white-space': 'pre',
-                'overflow-wrap': "anywhere",
-                "overflow": "visible",
-                "text-overflow": "unset",
-                "white-space": "normal",
-            },
-        )
-
-    AgGrid(result_plan, gridOptions=gb.build(), height=400,
-           theme=main_content_table_theme)  # columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS)
+    AgGrid(
+        result_plan,
+        gridOptions=gb.build(),
+        height=400,
+        theme=main_content_table_theme
+    )  # columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS)
     st.info("Right click the plan to export!")
+
+
+with settings_container:
+    # ss.enable_groups = st.checkbox("Enable exercise grouping")
+    ss.set_format = st.text_input(
+        "Set format", ss.set_format,
+        help="**Examples**  \n\n"
+             "- `{reps}x{weight}kg @{percentage:.1%}`  \n\n"
+             "- `{reps}/{weight}lbs`")
+
+with save_container:
+    st.subheader("Save")
+    file_name = st.text_input("Name your plan", f"Training")
+    if st.button("Prepare Savefile"):
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+
+            ss.df.to_excel(writer, "Exercises", index=False)
+            ss.df_sets.to_excel(writer, "Set Styles", index=False)
+            ss.df_progressions.to_excel(writer, "Progressions", index=False)
+            ss.rule_df.to_excel(writer, "Rules", index=False)
+            pd.DataFrame(pad_dict_list(sessions_with_exercises, "")).to_excel(
+                writer, "Sessions", index=False
+            )
+            pd.DataFrame.from_dict({"Number of Blocks": [n_blocks]}).to_excel(
+                writer, "Blocks", index=False
+            )
+            result_plan.to_excel(writer, "Plan", index=False)
+
+            #for sheet_name, sheet in writer.sheets[:-1].items():
+            #    sheet.set_column("A:Z", 20)
+
+        st.download_button(
+            f"Download {file_name}.gob",
+            buffer,
+            file_name=f"{datetime.datetime.today().date()}-{file_name}.gob"
+        )
