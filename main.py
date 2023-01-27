@@ -39,7 +39,7 @@ with st.columns(5)[0]:
 "# "
 
 # "## Start with Sessions"
-load_col, save_col = st.sidebar.columns(2)
+load_col, save_col = [st.sidebar.container()]*2 #st.sidebar.columns(2)
 st.sidebar.write("---")
 load_container = load_col.container()
 save_container = save_col.container()
@@ -78,7 +78,7 @@ add_progression_container = st.sidebar.container()  # expander("Want a custom pr
 
 "---"
 
-"## ③ Lets set the program rules!"
+"## ③ Set the Program Rules!"
 
 # default_set_style_container = st.container()
 conditional_set_style_container = st.container()
@@ -86,7 +86,7 @@ add_rules_container = st.expander("Add Rules", expanded=True)
 
 "---"
 
-"## ④ Export"
+"## ④ Export Plan"
 
 one_rm_container = st.expander("Enter your 1RMs before generating your plan!")
 export_plan_container = st.container()
@@ -98,6 +98,7 @@ settings_container = st.sidebar.container()
 
 with load_container:
     st.subheader("Load")
+    st.warning("Loading a template or reloading the page will reset your changes.")
     default_plan_name = st.selectbox(
         "Select a template",
         ["Juggernaut", "Custom Plan"],
@@ -108,7 +109,7 @@ with load_container:
         if upload is not None:
             file_ref = upload
         else:
-            st.info("Upload a previously saved .gob plan to continue.")
+            st.info("Upload a previously saved .gob template to continue.")
             st.stop()
     else:
         file_ref = default_plan_name + " Template.xlsx"
@@ -433,8 +434,8 @@ with conditional_set_style_container:
                 " for source and details.")
         st.image(PIL.Image.open("assets/juggernaut_programm.jpeg"), use_column_width=True)
 
-    if st.button(":exclamation: Delete all Rules"):
-        ss.rule_df = pd.DataFrame()
+    #if st.button(":exclamation: Delete all Rules"):
+    #    ss.rule_df = pd.DataFrame()
 
     sessions_df = pd.DataFrame(
         {
@@ -590,11 +591,37 @@ with add_rules_container:
             st.info("Added rules")
 
 with conditional_set_style_container:
-    AgGrid(
-        ss.rule_df, height=250,
-        columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS, theme=main_content_table_theme
+    gb = GridOptionsBuilder.from_dataframe(ss.rule_df)
+    gb.configure_default_column(
+        resizable=True,
+        autoHeight=True,
+        # wrapText=True,
+        width=150,
+        cellStyle={
+            # 'white-space': 'pre',
+            'overflow-wrap': "anywhere",
+            "overflow": "visible",
+            "text-overflow": "unset",
+            "white-space": "normal",
+        },
     )
+    gb.configure_selection('multiple', use_checkbox=True)
+    gb.configure_column(ss.rule_df.columns[0], headerCheckboxSelection=True)
 
+    grid_response = AgGrid(
+        ss.rule_df, height=250,
+        gridOptions=gb.build(),
+        columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS,
+        theme=main_content_table_theme,
+    )["selected_rows"]
+
+    if len(grid_response) > 0:
+        if st.button("Delete selected"):
+            ss.rule_df = ss.rule_df.drop([
+                selection["_selectedRowNodeInfo"]["nodeRowIndex"]
+                for selection in grid_response
+            ]).reset_index(drop=True)
+            st.experimental_rerun()
 
 with one_rm_container.form("Enter your 1RMs"):
     st.write("View this 1RM calculator if you don't know your 1RMs exactly.")
@@ -730,9 +757,10 @@ with export_plan_container:
             "white-space": "normal",
         },
     )
-
+    gb.configure_column("Exercise", pinned=True)
     AgGrid(
         result_plan,
+
         gridOptions=gb.build(),
         height=400,
         theme=main_content_table_theme
@@ -748,30 +776,33 @@ with settings_container:
              "- `{reps}x{weight}kg @{percentage:.1%}`  \n\n"
              "- `{reps}/{weight}lbs`")
 
-with save_container:
-    st.subheader("Save")
-    file_name = st.text_input("Name your plan", f"Training")
-    if st.button("Prepare Savefile"):
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+with export_plan_container:
+    st.write("**Save as Template**")
+    file_name = st.text_input(
+        "Name your template", f"Training",
+        help="You can download a savefile as a template so you can continue "
+             "working on your plan at a later point.")
+    # if st.button("Prepare Savefile"):
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
 
-            ss.df.to_excel(writer, "Exercises", index=False)
-            ss.df_sets.to_excel(writer, "Set Styles", index=False)
-            ss.df_progressions.to_excel(writer, "Progressions", index=False)
-            ss.rule_df.to_excel(writer, "Rules", index=False)
-            pd.DataFrame(pad_dict_list(sessions_with_exercises, "")).to_excel(
-                writer, "Sessions", index=False
-            )
-            pd.DataFrame.from_dict({"Number of Blocks": [n_blocks]}).to_excel(
-                writer, "Blocks", index=False
-            )
-            result_plan.to_excel(writer, "Plan", index=False)
-
-            #for sheet_name, sheet in writer.sheets[:-1].items():
-            #    sheet.set_column("A:Z", 20)
-
-        st.download_button(
-            f"Download {file_name}.gob",
-            buffer,
-            file_name=f"{datetime.datetime.today().date()}-{file_name}.gob"
+        ss.df.to_excel(writer, "Exercises", index=False)
+        ss.df_sets.to_excel(writer, "Set Styles", index=False)
+        ss.df_progressions.to_excel(writer, "Progressions", index=False)
+        ss.rule_df.to_excel(writer, "Rules", index=False)
+        pd.DataFrame(pad_dict_list(sessions_with_exercises, "")).to_excel(
+            writer, "Sessions", index=False
         )
+        pd.DataFrame.from_dict({"Number of Blocks": [n_blocks]}).to_excel(
+            writer, "Blocks", index=False
+        )
+        result_plan.to_excel(writer, "Plan", index=False)
+
+        #for sheet_name, sheet in writer.sheets[:-1].items():
+        #    sheet.set_column("A:Z", 20)
+
+    st.download_button(
+        "Save",#f"Download {datetime.datetime.today().date()}-{file_name}.gob Template",
+        buffer,
+        file_name=f"{datetime.datetime.today().date()}-{file_name}.gob"
+    )
