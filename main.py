@@ -856,6 +856,7 @@ with export_plan_container:
         file_name=f"{datetime.datetime.today().date()}-{file_name}.gob"
     )
     result_plan.columns.name = "Block"
+    result_plan.set_index("Exercise",inplace=True)
     st.write(
         result_plan.melt(
             value_vars=result_plan.columns,
