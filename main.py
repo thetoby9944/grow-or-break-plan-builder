@@ -45,16 +45,36 @@ load_container = load_col.container()
 save_container = save_col.container()
 
 
+with load_container:
+    st.subheader("Load")
+    st.warning("Loading a template or reloading the page will reset your changes.")
+    default_plan_name = st.selectbox(
+        "Select a template",
+        ["Juggernaut", "Upload Custom Plan"],
+        on_change=lambda: ss.clear()
+    )
+    if default_plan_name == "Upload Custom Plan":
+        upload = st.file_uploader("Upload a savefile", type="gob", on_change=lambda: ss.clear())
+        if upload is not None:
+            file_ref = upload
+        else:
+            st.info("Upload a previously saved .gob template to continue.")
+            st.stop()
+    else:
+        file_ref = default_plan_name + " Template.xlsx"
+
+
+
 "## ① Training Sessions"
 
 st.sidebar.header("Exercises")
-all_exercises_container = st.sidebar.expander("Exercises")
 add_ex_container = st.sidebar.container()  # expander("Can't find your favourite exercise? Add it!" )
+all_exercises_container = st.sidebar.expander("View Exercises")
 
 name_sessions_container = st.container()
 
 
-all_groups_container = st.sidebar.expander("My groups")
+# all_groups_container = st.sidebar.expander("My groups")
 groups_container = st.expander("Exercise groups")
 
 sessions_container = st.container()
@@ -62,18 +82,18 @@ sessions_container = st.container()
 "---"
 "## ② Number of training sessions"
 
-all_sessions_container = st.sidebar.expander("Sessions")
 session_repeats = st.container()
 session_sorting = st.container()
+all_sessions_container = st.sidebar.expander("View Sessions")
 
 st.sidebar.header("Set Styles")
-all_set_styles_container = st.sidebar.expander("Set Styles")
 add_set_style_container = st.sidebar.container()  # expander("Missing your favourite set style? Add it!")
+all_set_styles_container = st.sidebar.expander("View Set Styles")
 
 # "## ④⑤ Progressive overload! (Waves & Periodization)"
 
 st.sidebar.header("Progression Waves")
-all_set_progressions = st.sidebar.expander("Progression Waves")
+all_set_progressions = st.sidebar.expander("View Progression Waves")
 add_progression_container = st.sidebar.container()  # expander("Want a custom progression wave? Add it!")
 
 
@@ -96,25 +116,6 @@ st.sidebar.header("Settings")
 settings_container = st.sidebar.container()
 
 # Defaults
-
-with load_container:
-    st.subheader("Load")
-    st.warning("Loading a template or reloading the page will reset your changes.")
-    default_plan_name = st.selectbox(
-        "Select a template",
-        ["Juggernaut", "Custom Plan"],
-        on_change=lambda: ss.clear()
-    )
-    if default_plan_name == "Custom Plan":
-        upload = st.file_uploader("Upload a savefile", type="gob", on_change=lambda: ss.clear())
-        if upload is not None:
-            file_ref = upload
-        else:
-            st.info("Upload a previously saved .gob template to continue.")
-            st.stop()
-    else:
-        file_ref = default_plan_name + " Template.xlsx"
-
 
 if "id" not in ss:
     ss["id"] = datetime.datetime.now().isoformat()
@@ -279,9 +280,9 @@ with groups_container:
     else:
         groups = {}
 
-with all_groups_container:
-    if ss.enable_groups:
-        AgGrid(pd.DataFrame(pad_dict_list(groups, "")), theme="material")
+#with all_groups_container:
+#    if ss.enable_groups:
+#        AgGrid(pd.DataFrame(pad_dict_list(groups, "")), theme="material")
 
 with name_sessions_container:
     sessions = list(ss.default_sessions.keys())
@@ -853,9 +854,3 @@ with export_plan_container:
     )
 
 
-# Disable summary overview
-all_exercises_container.empty()
-all_groups_container.empty()
-all_set_progressions.empty()
-all_set_styles_container.empty()
-all_sessions_container.empty()
