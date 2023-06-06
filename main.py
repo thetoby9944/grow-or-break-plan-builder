@@ -858,11 +858,11 @@ with export_plan_container:
     result_plan.columns.name = "Block"
     result_plan.set_index("Exercise",inplace=True)
     st.write(
-        list(result_plan.melt(
+        result_plan.melt(
             value_vars=result_plan.columns,
             value_name="Sets",
             ignore_index=False,
-        ).set_index("Block", drop=False).apply(lambda x: x.to_json(orient='records')).values)
+        ).set_index("Block", drop=False).apply(lambda x: x.to_json(orient='records'))
     )
 
 
