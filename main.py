@@ -801,7 +801,7 @@ with export_plan_container:
         theme=main_content_table_theme,
         columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS
     )  # columns_auto_size_mode=)
-    st.info("Right click the plan to export!")
+    st.info("Right click the plan to export as .csv / .xlsx")
 
 
 with settings_container:
@@ -826,7 +826,7 @@ with settings_container:
     st.button("Update")
 
 with export_plan_container:
-    st.write("**Save as Template**")
+    st.write("**... or save as .gob Template**")
     file_name = st.text_input(
         "Name your template", f"Training",
         help="You can download a savefile as a template so you can continue "
