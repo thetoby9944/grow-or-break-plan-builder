@@ -300,7 +300,7 @@ with name_sessions_container:
     )
 
     if not len(sessions):
-        st.warning("Name at least one session please")
+        st.warning("Name at least one session, e.g. 'Day 1' or 'Upper Body' or ...")
         st.stop()
 
     sessions_list = sessions
