@@ -1,5 +1,3 @@
-from time import sleep
-
 from streamlit_sortables import sort_items
 from streamlit_tags import st_tags
 from st_aggrid import AgGrid, ColumnsAutoSizeMode, AgGridTheme, GridOptionsBuilder
@@ -13,7 +11,6 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import re
-import os
 from time import sleep
 
 
@@ -50,7 +47,7 @@ with load_container:
     st.warning("Loading a template or reloading the page will reset your changes.")
     default_plan_name = st.selectbox(
         "Select a template",
-        ["Juggernaut", "Upload Custom Plan"],
+        ["Empty", "Juggernaut", "Upload Custom Plan"],
         on_change=lambda: ss.clear()
     )
     if default_plan_name == "Upload Custom Plan":
@@ -363,8 +360,6 @@ with session_sorting:
             st.write(session)
             sessions_with_exercises[session] = sort_items(exercises, direction="vertical")# , key=session+ss.sort_key)
     st.info("Drag and drop to **sort** exercises. For **add / remove**, go to step ①")
-
-
 
 
 with add_set_style_container:
