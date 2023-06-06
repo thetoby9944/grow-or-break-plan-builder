@@ -862,7 +862,7 @@ with export_plan_container:
             value_vars=result_plan.columns,
             value_name="Sets",
             ignore_index=False,
-        ).reset_index().set_index("Block", drop=False)#.apply(lambda x: x.to_json(orient='records'))
+        ).reset_index().set_index("Block", drop=True).groupby(level=0).apply(lambda x: x.to_json(orient='records'))
     )
 
 
