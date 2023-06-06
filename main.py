@@ -641,7 +641,7 @@ with one_rm_container.form("Enter your 1RMs"):
                 if exercise not in one_rms:
                     ss.df.loc[(ss.df["Exercise"] == exercise), "1RM"] = one_rms[exercise] = st.number_input(
                         f"1RM for {exercise}",
-                        value=exercise_row["1RM"] if "1RM" in exercise_row else 100,
+                        value=exercise_row["1RM"] if "1RM" in exercise_row and str(exercise_row["1RM"]).isnumeric() else 100,
                         key=exercise+"1RM"+ss.id
                     )
 
