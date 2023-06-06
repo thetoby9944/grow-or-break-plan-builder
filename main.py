@@ -1,3 +1,5 @@
+import json
+
 from streamlit_sortables import sort_items
 from streamlit_tags import st_tags
 from st_aggrid import AgGrid, ColumnsAutoSizeMode, AgGridTheme, GridOptionsBuilder
@@ -870,12 +872,12 @@ with export_plan_container:
     ).reset_index().set_index(["Block", "Exercise"], drop=True)
     long_result_plan.index = long_result_plan.index.map(" ".join)
 
-    st.write(
-        {
+    st.json(
+        json.dumps({
             block + " " + session: '\n\n'.join([f'{key}\n{value}' for key, value in exercises.items()])
             for block, sessions in plan_structure_long.items()
             for session, exercises in sessions.items()
-        }
+        })
     )
 
 
