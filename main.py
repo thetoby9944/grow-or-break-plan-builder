@@ -70,6 +70,31 @@ all_exercises_container = st.sidebar.expander("View Exercises")
 
 name_sessions_container = st.container()
 
+with name_sessions_container:
+    sessions = list(ss.default_sessions.keys())
+
+    sessions = st_tags(
+        label="",
+        value=sessions,
+        suggestions="""
+        WEEK A - Day 1  
+    WEEK A - Day 2  
+    WEEK A - Day 3  
+    WEEK B - Day 1  
+    WEEK B - Day 2  
+    WEEK B - Day 3  """.split("\n"),
+        text="Enter new session name here and press ⏎",
+        key="sttags"+ss.id
+        # help=sessions_help
+    )
+
+    if not len(sessions):
+        st.warning("Name at least one session, e.g. 'Day 1' or 'Upper Body' or ...")
+        st.stop()
+
+    sessions_list = sessions
+
+
 
 # all_groups_container = st.sidebar.expander("My groups")
 groups_container = st.expander("Exercise groups")
@@ -281,29 +306,7 @@ with groups_container:
 #    if ss.enable_groups:
 #        AgGrid(pd.DataFrame(pad_dict_list(groups, "")), theme="material")
 
-with name_sessions_container:
-    sessions = list(ss.default_sessions.keys())
 
-    sessions = st_tags(
-        label="",
-        value=sessions,
-        suggestions="""
-        WEEK A - Day 1  
-    WEEK A - Day 2  
-    WEEK A - Day 3  
-    WEEK B - Day 1  
-    WEEK B - Day 2  
-    WEEK B - Day 3  """.split("\n"),
-        text="Enter new session name here and press ⏎",
-        key="sttags"+ss.id
-        # help=sessions_help
-    )
-
-    if not len(sessions):
-        st.warning("Name at least one session, e.g. 'Day 1' or 'Upper Body' or ...")
-        st.stop()
-
-    sessions_list = sessions
 
 with sessions_container:
     def update_sort_key():
