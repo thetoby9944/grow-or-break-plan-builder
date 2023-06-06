@@ -864,7 +864,7 @@ with export_plan_container:
         value_name="Sets",
         ignore_index=False,
     ).reset_index().set_index(["Block", "Exercise"], drop=True)
-    long_result_plan.index.map(" ".join)
+    long_result_plan.index = long_result_plan.index.map(" ".join)
 
     st.write(
         long_result_plan.to_dict(orient="index")
