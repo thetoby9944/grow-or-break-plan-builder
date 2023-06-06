@@ -76,6 +76,7 @@ st.sidebar.header("Progression Waves")
 all_set_progressions = st.sidebar.expander("Progression Waves")
 add_progression_container = st.sidebar.container()  # expander("Want a custom progression wave? Add it!")
 
+
 "---"
 
 "## ③ Set the Program Rules!"
@@ -123,7 +124,8 @@ if "enable_groups" not in ss:
 
 if "set_format" not in ss:
     ss["set_format"] = "{reps}x{weight}"
-
+    ss["set_format_line_2"] = "{percentage:.1%}"
+    ss["set_format_delimiter"] = " "
 if "df" not in ss:
     ss["df"] = pd.read_excel(file_ref, "Exercises")
 
@@ -710,15 +712,19 @@ with one_rm_container.form("Enter your 1RMs"):
                     if any(filter(str.isdigit, weight))
                 ] if set_style_row["Warmup Weight Adjustment"] is not np.nan else []
 
-                current_set = " ".join([
-                    ss.set_format.format(
-                        reps=int(rep_count),
-                        weight=round(one_rms[exercise] * (progression + weight_percentage)),
-                        percentage=(progression + weight_percentage)
-                    )
-                    for i, (rep_count, weight_percentage)
-                    in enumerate(list(itertools.zip_longest(reps, weights_percentage, fillvalue=0)))
-                ])
+                def format_set_string(set_format):
+                    return "\n".join([ #ss.set_format_delimiter
+                        set_format.format(
+                            reps=int(rep_count),
+                            weight=round(one_rms[exercise] * (progression + weight_percentage)),
+                            percentage=(progression + weight_percentage)
+                        )
+                        for i, (rep_count, weight_percentage)
+                        in enumerate(list(itertools.zip_longest(reps, weights_percentage, fillvalue=0)))
+                        if set_format != ""
+                    ])
+
+                current_set = format_set_string(ss.set_format) + "\n" + format_set_string(ss.set_format_line_2)
 
                 if len(reps) > 0 and exercise not in one_rms and current_set_style != "Empty":
                     one_rms[exercise] = st.number_input(f"1RM for {exercise}", 100)
@@ -744,37 +750,76 @@ with export_plan_container:
     result_plan = result_plan.reindex(columns=np.roll(result_plan.columns, 1))
 
     gb = GridOptionsBuilder.from_dataframe(result_plan)
-    gb.configure_default_column(
-        resizable=True,
-        autoHeight=True,
-        # wrapText=True,
-        width=150,
+
+    for column in result_plan.columns[1:]:
+        gb.configure_column(
+            column,
+            resizable=True,
+            autoHeight=True,
+            maxWidth=75,
+            # wrapText=True,
+            autoSizeMode=ColumnsAutoSizeMode.FIT_CONTENTS,
+            headerTooltip=column,
+            cellStyle={
+                'overflow-wrap': "anywhere",
+                "overflow": "visible",
+                "text-overflow": "unset",
+                'white-space': "pre", #'normal',
+                "font-family": "Courier",
+                "font-size": "8pt",
+                "line-height": "12px",
+                "padding-top": "5px",
+                "padding-bottom": "5px"
+            },
+        )
+    gb.configure_column(
+        "Exercise",
+        pinned=True,
+        maxWidth=150,
         cellStyle={
             # 'white-space': 'pre',
             'overflow-wrap': "anywhere",
             "overflow": "visible",
             "text-overflow": "unset",
             "white-space": "normal",
+            "font-size": "10pt",
+            "line-height": "20px",
+            "padding-top": "5px",
+            "padding-bottom": "5px"
         },
     )
-    gb.configure_column("Exercise", pinned=True)
     AgGrid(
         result_plan,
 
         gridOptions=gb.build(),
         height=400,
-        theme=main_content_table_theme
-    )  # columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS)
+
+        theme=main_content_table_theme,
+        columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS
+    )  # columns_auto_size_mode=)
     st.info("Right click the plan to export!")
 
 
 with settings_container:
     # ss.enable_groups = st.checkbox("Enable exercise grouping")
     ss.set_format = st.text_input(
-        "Set format", ss.set_format,
+        "Set format Line 1", ss.set_format,
         help="**Examples**  \n\n"
              "- `{reps}x{weight}kg @{percentage:.1%}`  \n\n"
              "- `{reps}/{weight}lbs`")
+    ss.set_format_line_2 = st.text_input(
+        "Set format Line 2", ss.set_format_line_2,
+        help="**Examples**  \n\n"
+             "- `{reps}x{weight}kg @{percentage:.1%}`  \n\n"
+             "- `{reps}/{weight}lbs`")
+
+    ss.set_format_delimiter = st.text_input(
+        "Set format Delimiter", ss.set_format_delimiter,
+        help="**Examples**  \n\n"
+             "- `/`  \n\n"
+             "- `|`  \n\n"
+             "- ` `")
+    st.button("Update")
 
 with export_plan_container:
     st.write("**Save as Template**")
@@ -806,3 +851,11 @@ with export_plan_container:
         buffer,
         file_name=f"{datetime.datetime.today().date()}-{file_name}.gob"
     )
+
+
+# Disable summary overview
+all_exercises_container.empty()
+all_groups_container.empty()
+all_set_progressions.empty()
+all_set_styles_container.empty()
+all_sessions_container.empty()
