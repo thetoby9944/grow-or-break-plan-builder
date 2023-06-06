@@ -856,4 +856,10 @@ with export_plan_container:
         file_name=f"{datetime.datetime.today().date()}-{file_name}.gob"
     )
 
+    st.write(
+        result_plan.melt(
+
+        )
+    )
+
 
