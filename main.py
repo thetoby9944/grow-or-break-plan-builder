@@ -93,8 +93,8 @@ all_set_styles_container = st.sidebar.expander("View Set Styles")
 # "## ④⑤ Progressive overload! (Waves & Periodization)"
 
 st.sidebar.header("Progression Waves")
-all_set_progressions = st.sidebar.expander("View Progression Waves")
 add_progression_container = st.sidebar.container()  # expander("Want a custom progression wave? Add it!")
+all_set_progressions = st.sidebar.expander("View Progression Waves")
 
 
 "---"
@@ -216,7 +216,7 @@ with add_ex_container:
         df = ss.df
 
         raw_data = {
-            "Exercise": cols[0].text_input("Exercise Name"),
+            "Exercise": cols[0].text_input("Add Exercise", placeholder="Exercise Name"),
             "Muscle": cols[1].selectbox("Muscle", df["Muscle"].unique()),
             "Exercise Type": cols[2].selectbox("Exercise Type", df["Exercise Type"].unique())
         }
@@ -375,7 +375,7 @@ with add_set_style_container:
         cols = [st.container()] * n_col  # st.columns(n_col)
 
         raw_data = {
-            "Name": cols[0].text_input("Name", placeholder="Set Style Name"),
+            "Name": cols[0].text_input("Add Set Style", placeholder="Set Style Name"),
             "Reps": cols[1].text_input("Reps", value="5 / 3 / 1", placeholder="12 / 10 / 8 / 10"),
             "Warmup Weight Adjustment": cols[2].text_input("Weight Adjustment per set", placeholder="-12% / -7.5%")
         }
@@ -402,7 +402,7 @@ with add_progression_container:
         cols = [st.container()] * 2  # st.columns(2)
 
         raw_data = {
-            "Name": cols[0].text_input("Progression Name", placeholder="E.g. accessory progression"),
+            "Name": cols[0].text_input("Add Progression", placeholder="E.g. accessory progression"),
             "Progression": cols[1].text_input(
                 "Progression - weight adjustment for each block",
                 value="60% / 62% / 65% / 62% / 67% / 70% / 67% / 70% / 72% / 70% / 72% / 75% / 72% / 75% / 77% / 75%",
