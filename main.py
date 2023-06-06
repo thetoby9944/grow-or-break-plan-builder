@@ -855,6 +855,8 @@ with export_plan_container:
         buffer,
         file_name=f"{datetime.datetime.today().date()}-{file_name}.gob"
     )
+
+    "## Long-form "
     result_plan.columns.name = "Block"
     result_plan.set_index("Exercise",inplace=True)
     long_result_plan = result_plan.melt(
@@ -863,6 +865,7 @@ with export_plan_container:
         ignore_index=False,
     ).reset_index().set_index(["Block", "Exercise"], drop=True)
     long_result_plan.index.map(" ".join)
+
     st.write(
         long_result_plan.to_dict(orient="index")
     )
