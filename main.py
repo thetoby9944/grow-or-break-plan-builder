@@ -855,10 +855,11 @@ with export_plan_container:
         buffer,
         file_name=f"{datetime.datetime.today().date()}-{file_name}.gob"
     )
-
+    result_plan.columns.name = "Block"
     st.write(
         result_plan.melt(
-
+            value_vars=result_plan.columns,
+            value_name="Sets"
         )
     )
 
