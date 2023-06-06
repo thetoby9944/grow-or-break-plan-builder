@@ -862,7 +862,7 @@ with export_plan_container:
             value_vars=result_plan.columns,
             value_name="Sets",
             ignore_index=False,
-        ).groupby("Block").apply(lambda a: a.drop("Block", axis=1)[:])
+        )#.groupby("Block").apply(lambda a: a.drop("Block", axis=1)[:])
     )
 
 
