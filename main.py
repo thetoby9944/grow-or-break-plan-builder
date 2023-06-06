@@ -872,7 +872,7 @@ with export_plan_container:
 
     st.write(
         {
-            block + " " + session: "\n".join(*zip(exercises.items()))
+            block + " " + session: "\n".join([*zip(exercises.items())])
             for block, sessions in plan_structure_long.items()
             for session, exercises in sessions.items()
         }
