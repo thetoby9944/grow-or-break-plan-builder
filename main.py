@@ -74,7 +74,7 @@ if "enable_groups" not in ss:
 
 if "set_format" not in ss:
     ss["set_format"] = "{reps}x{weight}"
-    ss["set_format_line_2"] = "{percentage:.1%}"
+    ss["set_format_line_2"] = ""
     ss["set_format_delimiter"] = " "
 if "df" not in ss:
     ss["df"] = pd.read_excel(file_ref, "Exercises")
@@ -450,7 +450,7 @@ with conditional_set_style_container:
     )
     blocks_df = pd.DataFrame(
         {
-            "Block": list([f"Block {i + 1}" for i in range(n_blocks)])
+            "Block": list([f"B{i + 1}" for i in range(n_blocks)])
         }
     )
     # session_exercise_df = pd.DataFrame(sessions_with_exercises).add_prefix("Exercise of ")
