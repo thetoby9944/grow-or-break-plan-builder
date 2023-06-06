@@ -362,7 +362,7 @@ with session_sorting:
         with grid[i // 3][i % 3]:
             st.write(session)
             sessions_with_exercises[session] = sort_items(exercises, direction="vertical")# , key=session+ss.sort_key)
-    st.info("These elements allow drag and drop to **sort** exercises. For **add / remove**, use the elements in step ①")
+    st.info("Drag and drop to **sort** exercises. For **add / remove**, go to step ①")
 
 
 
