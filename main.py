@@ -862,7 +862,7 @@ with export_plan_container:
             value_vars=result_plan.columns,
             value_name="Sets",
             ignore_index=False,
-        ).reset_index().set_index("Block", drop=True).to_json(orient="records")
+        ).reset_index().set_index("Block", drop=True).to_dict(orient="records")
     )
 
 
