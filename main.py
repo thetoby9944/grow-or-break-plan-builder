@@ -26,6 +26,7 @@ ss = st.session_state
 main_content_table_theme = AgGridTheme.ALPINE.value
 
 
+
 # UI Order
 
 with st.columns(5)[0]:
@@ -59,6 +60,48 @@ with load_container:
             st.stop()
     else:
         file_ref = default_plan_name + " Template.xlsx"
+
+
+
+
+# Load Defaults
+
+if "id" not in ss:
+    ss["id"] = datetime.datetime.now().isoformat()
+
+if "enable_groups" not in ss:
+    ss["enable_groups"] = False
+
+if "set_format" not in ss:
+    ss["set_format"] = "{reps}x{weight}"
+    ss["set_format_line_2"] = "{percentage:.1%}"
+    ss["set_format_delimiter"] = " "
+if "df" not in ss:
+    ss["df"] = pd.read_excel(file_ref, "Exercises")
+
+if "df_sets" not in ss:
+    ss["df_sets"] = pd.read_excel(file_ref, "Set Styles")
+
+if "df_progressions" not in ss:
+    ss["df_progressions"] = pd.read_excel(file_ref, "Progressions")
+
+if "rule_df" not in ss:
+    ss["rule_df"] = pd.read_excel(file_ref, "Rules")
+
+if "df_sessions" not in ss:
+    ss["df_sessions"] = pd.read_excel(file_ref, "Sessions")
+    ss["default_sessions"] = {
+        session: exercises.dropna().to_list()
+        for session, exercises
+        in ss.df_sessions.to_dict("series").items()
+    }
+
+if "df_blocks" not in ss:
+    ss["df_blocks"] = pd.read_excel(file_ref, "Blocks")
+    ss["default_blocks"] = ss.df_blocks["Number of Blocks"].loc[0]
+
+if "sort_key" not in ss:
+    ss["sort_key"] = datetime.datetime.now().isoformat()
 
 
 
@@ -137,44 +180,6 @@ export_plan_container = st.container()
 st.sidebar.header("Settings")
 settings_container = st.sidebar.container()
 
-# Defaults
-
-if "id" not in ss:
-    ss["id"] = datetime.datetime.now().isoformat()
-
-if "enable_groups" not in ss:
-    ss["enable_groups"] = False
-
-if "set_format" not in ss:
-    ss["set_format"] = "{reps}x{weight}"
-    ss["set_format_line_2"] = "{percentage:.1%}"
-    ss["set_format_delimiter"] = " "
-if "df" not in ss:
-    ss["df"] = pd.read_excel(file_ref, "Exercises")
-
-if "df_sets" not in ss:
-    ss["df_sets"] = pd.read_excel(file_ref, "Set Styles")
-
-if "df_progressions" not in ss:
-    ss["df_progressions"] = pd.read_excel(file_ref, "Progressions")
-
-if "rule_df" not in ss:
-    ss["rule_df"] = pd.read_excel(file_ref, "Rules")
-
-if "df_sessions" not in ss:
-    ss["df_sessions"] = pd.read_excel(file_ref, "Sessions")
-    ss["default_sessions"] = {
-        session: exercises.dropna().to_list()
-        for session, exercises
-        in ss.df_sessions.to_dict("series").items()
-    }
-
-if "df_blocks" not in ss:
-    ss["df_blocks"] = pd.read_excel(file_ref, "Blocks")
-    ss["default_blocks"] = ss.df_blocks["Number of Blocks"].loc[0]
-
-if "sort_key" not in ss:
-    ss["sort_key"] = datetime.datetime.now().isoformat()
 
 
 # Utils
