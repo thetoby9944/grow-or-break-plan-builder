@@ -635,9 +635,12 @@ with one_rm_container.form("Enter your 1RMs"):
     one_rms = {}
 
     plan_structure = {}
+    plan_structure_long = {}
     for block_number, block in enumerate(blocks_df["Block"]):
         plan_structure[block] = {}
+        plan_structure_long[block] = {}
         for session, exercises in sessions_with_exercises.items():
+            plan_structure_long[block][session] = {}
 
             for exercise in exercises:
                 exercise_row = ss.df.loc[ss.df["Exercise"] == exercise].iloc[-1]
@@ -734,6 +737,7 @@ with one_rm_container.form("Enter your 1RMs"):
                     one_rms[exercise] = st.number_input(f"1RM for {exercise}", 100)
 
                 plan_structure[block][session + " " + exercise] = current_set
+                plan_structure_long[block][session][exercise] = current_set
 
     if st.form_submit_button("Update Plan"):
         pass
@@ -867,7 +871,10 @@ with export_plan_container:
     long_result_plan.index = long_result_plan.index.map(" ".join)
 
     st.write(
-        long_result_plan.to_dict(orient="index")
+        {
+        block+ " " + session: "".join(exercises)
+        for session, exercises in sessions.items()
+        for block, sessions in plan_structure_long.items()}
     )
 
 
