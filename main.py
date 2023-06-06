@@ -145,7 +145,7 @@ groups_container = st.expander("Exercise groups")
 sessions_container = st.container()
 
 "---"
-"## ② Number of training sessions"
+"## ② Number of training blocks"
 
 session_repeats = st.container()
 session_sorting = st.container()
