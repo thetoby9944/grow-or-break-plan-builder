@@ -341,7 +341,7 @@ with sessions_container:
 
     for session, exercises in sessions_with_exercises.items():
         if len(exercises) < 1:
-            st.info(f"You have an empty session, {'remove the empty session or' if len(sessions)>1 else '' }add some exercises to continue")
+            st.info(f"You have an empty session, {'remove the empty session or ' if len(sessions)>1 else '' }add some exercises to continue")
             st.stop()
 
 with all_sessions_container:
