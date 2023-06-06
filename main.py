@@ -859,7 +859,8 @@ with export_plan_container:
     st.write(
         result_plan.melt(
             value_vars=result_plan.columns,
-            value_name="Sets"
+            value_name="Sets",
+            ignore_index=False,
         )
     )
 
