@@ -857,12 +857,14 @@ with export_plan_container:
     )
     result_plan.columns.name = "Block"
     result_plan.set_index("Exercise",inplace=True)
+    long_result_plan = result_plan.melt(
+        value_vars=result_plan.columns,
+        value_name="Sets",
+        ignore_index=False,
+    ).reset_index().set_index(["Block", "Exercise"], drop=True)
+    long_result_plan.index.map(" ".join)
     st.write(
-        result_plan.melt(
-            value_vars=result_plan.columns,
-            value_name="Sets",
-            ignore_index=False,
-        ).reset_index().set_index(["Block", "Exercise"], drop=True).to_dict(orient="index")
+        long_result_plan.to_dict(orient="index")
     )
 
 
